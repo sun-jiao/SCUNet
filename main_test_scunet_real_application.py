@@ -95,9 +95,9 @@ def main():
         # (2) img_E
         # ------------------------------------
 
-        #img_E = utils_model.test_mode(model, img_L, refield=64, min_size=512, mode=2)
+        img_E = utils_model.test_mode(model, img_L, refield=64, min_size=512, mode=2)
 
-        img_E = model(img_L)
+        img_E = model(img_E)
         img_E = util.tensor2uint(img_E)
 
         # ------------------------------------
