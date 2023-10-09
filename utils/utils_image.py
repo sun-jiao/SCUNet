@@ -2,6 +2,7 @@ import os
 import math
 import random
 import numpy as np
+import piexif
 import torch
 import cv2
 from torchvision.utils import make_grid
@@ -204,18 +205,29 @@ def imread_uint(path, n_channels=3):
 # --------------------------------------------
 # matlab's imwrite
 # --------------------------------------------
-def imsave(img, img_path):
+def imsave(img, img_path, exif=None):
     img = np.squeeze(img)
     if img.ndim == 3:
         img = img[:, :, [2, 1, 0]]
-    cv2.imwrite(img_path, img)
+    if exif:
+        # save image with exif
+        name, ext = os.path.splitext(img_path)
+        temp_path = name + ".temp" + ext  # 在扩展名前面添加.temp
+        cv2.imwrite(temp_path, img)
+        piexif.insert(piexif.dump(exif), temp_path, img_path)
+        os.remove(temp_path)  # delete temp file.
+    else:
+        # save image if no exif data
+        cv2.imwrite(img_path, img)
 
-def imwrite(img, img_path):
-    img = np.squeeze(img)
-    if img.ndim == 3:
-        img = img[:, :, [2, 1, 0]]
-    cv2.imwrite(img_path, img)
 
+def read_exif_data(input_image_path):
+    try:
+        exif_data = piexif.load(input_image_path)
+        return exif_data
+    except Exception as e:
+        print(f"Error reading EXIF data: {str(e)}")
+        return None
 
 
 # --------------------------------------------

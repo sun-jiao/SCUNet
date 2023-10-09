@@ -1,17 +1,12 @@
-import os.path
-import logging
 import argparse
-
-import numpy as np
-from datetime import datetime
-from collections import OrderedDict
+import logging
+import os.path
 
 import torch
 
+from utils import utils_image as util
 from utils import utils_logger
 from utils import utils_model
-from utils import utils_image as util
-
 
 '''
 % If you have any question, please feel free to contact with me.
@@ -21,7 +16,6 @@ by Kai Zhang (2021/05-2021/11)
 
 
 def main():
-
     # ----------------------------------------
     # Preparation
     # ----------------------------------------
@@ -37,18 +31,18 @@ def main():
 
     n_channels = 3
 
-    result_name = args.testset_name + '_' + args.model_name     # fixed
-    model_path = os.path.join(args.model_zoo, args.model_name+'.pth')
+    result_name = args.testset_name + '_' + args.model_name  # fixed
+    model_path = os.path.join(args.model_zoo, args.model_name + '.pth')
 
     # ----------------------------------------
     # L_path, E_path
     # ----------------------------------------
-    L_path = os.path.join(args.testsets, args.testset_name) # L_path, for Low-quality images
-    E_path = os.path.join(args.results, result_name)        # E_path, for Estimated images
+    L_path = os.path.join(args.testsets, args.testset_name)  # L_path, for Low-quality images
+    E_path = os.path.join(args.results, result_name)  # E_path, for Estimated images
     util.mkdir(E_path)
 
     logger_name = result_name
-    utils_logger.logger_info(logger_name, log_path=os.path.join(E_path, logger_name+'.log'))
+    utils_logger.logger_info(logger_name, log_path=os.path.join(E_path, logger_name + '.log'))
     logger = logging.getLogger(logger_name)
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -57,7 +51,7 @@ def main():
     # load model
     # ----------------------------------------
     from models.network_scunet import SCUNet as net
-    model = net(in_nc=n_channels,config=[4,4,4,4,4,4,4],dim=64)
+    model = net(in_nc=n_channels, config=[4, 4, 4, 4, 4, 4, 4], dim=64)
 
     model.load_state_dict(torch.load(model_path), strict=True)
     model.eval()
@@ -74,15 +68,15 @@ def main():
     L_paths = util.get_image_paths(L_path)
 
     num_parameters = sum(map(lambda x: x.numel(), model.parameters()))
-    logger.info('{:>16s} : {:<.4f} [M]'.format('#Params', num_parameters/10**6))
+    logger.info('{:>16s} : {:<.4f} [M]'.format('#Params', num_parameters / 10 ** 6))
 
     for idx, img in enumerate(L_paths):
-
         # ------------------------------------
         # (1) img_L
         # ------------------------------------
+        exif_data = util.read_exif_data(img)
         img_name, ext = os.path.splitext(os.path.basename(img))
-        logger.info('{:->4d}--> {:>10s}'.format(idx+1, img_name+ext))
+        logger.info('{:->4d}--> {:>10s}'.format(idx + 1, img_name + ext))
 
         img_L = util.imread_uint(img, n_channels=n_channels)
 
@@ -96,15 +90,16 @@ def main():
         # ------------------------------------
 
         img_E = utils_model.test_mode(model, img_L, refield=64, min_size=512, mode=2)
-
-        img_E = model(img_E)
+        # img_E = model(img_L)
         img_E = util.tensor2uint(img_E)
 
         # ------------------------------------
         # save results
         # ------------------------------------
-        util.imsave(img_E, os.path.join(E_path, img_name+'.png'))
+        util.imsave(img_E, os.path.join(E_path, img_name + ext), exif_data)
+
+    logger.info('Processing completed.')
+
 
 if __name__ == '__main__':
-
     main()
